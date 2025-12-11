@@ -61,7 +61,7 @@ export default function AdsHeader({
   }
 
   return (
-  <div className='ads-header'>
+  <div className='list-header'>
   <div className="sorting-container" id='pageBeginning'>
     <div className='sorting-block'> 
       <div> <label>Сортировка:&nbsp;</label> </div>
