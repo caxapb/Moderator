@@ -6,51 +6,61 @@
 // ========================================================================================
 
 
-// Из схемы enum: [createdAt, price, priority] (tech-int3-server/schema.yaml)
-// const sortVariants = ['createdAt', 'price', 'priority'];
-// const sortOrders = ['asc', 'desc']
-
 import { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import AdPreview from '../../components/AdPreview';
 import fetchData from '../../utils/fetchData';
 import { useSearchParams } from 'react-router-dom';
-import { useModerator } from '../../hooks/useModerator';
 import AdsHeader from './AdsHeader';
 import Pagination from './Pagination';
+import NewAd from './NewAd';
+import { defaultPagination } from '../../models/PaginationModel';
+import { defaultFilters } from '../../models/FiltersModel';
+
+// импорт типов
+import type { AdModel } from '../../models/AdsModels';
+import type { PaginationModel } from '../../models/PaginationModel';
+import type { AdsResponseModel } from '../../models/ResponseModel';
+import type { FiltersModel } from '../../models/FiltersModel';
+import type { AdsHeaderProps } from './AdsHeader';
 
 import './styles/Ads.css'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function Ads() {
-  const [ads, setAds] = useState([]);
-  const [loading, setLoading] = useState(true);
+  // данные по объявлениям
+  const [ads, setAds] = useState<AdModel[]>([]);
 
-  const [curPage, setCurPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [pagination, setPagination] = useState(null);
+  // данные по пагинации
+  const [pagination, setPagination] = useState<PaginationModel>(defaultPagination);
 
-  const [selectedStatuses, setSelectedStatuses] = useState([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [minSelectedPrice, setMinSelectedPrice] = useState('');
-  const [maxSelectedPrice, setMaxSelectedPrice] = useState('');
+  // выбранные фильтры и параметр сортировки
+  const [filters, setFilters] = useState<FiltersModel>(defaultFilters);
+  const [sortOrder, setSortOrder] = useState<'asc' |'desc' | ''>('');
+  const [sortBy, setSortBy] = useState<'createdAt' | 'price' | 'priority' | ''>('');
 
+  // инфо о выбранныъ объявлениях
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [allAreChosen, setAllAreChosen] = useState<boolean>(false);
+
+  // поиск через параметры url
   const [searchParams] = useSearchParams();
-  const search = searchParams.get('search') || '';
+  const search: string = searchParams.get('search') || '';
 
-  const [sortOrder, setSortOrder] = useState('');
-  const [sortBy, setSortBy] = useState('');
-
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // трекаем должен ли сайдбар быть открыт (для адаптивности)
+  const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   const toggleSidebar = () => {
     setIsSidebarOpen(!isSidebarOpen);
   };
 
-  const [moderator, loadingModerator] = useModerator();
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [allAreChosen, setAllAreChosen] = useState(false);
-  const toggleSelection = (id) => {
+  // трекаем должно ли окно о создании нового объявления быть октрытым
+  const [showNewAd, setShowNewAd] = useState(false);
+
+  // загрузка
+  const [loading, setLoading] = useState<boolean>(true);
+
+  const toggleSelection = (id: number) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) {
       newSelected.delete(id);
@@ -58,38 +68,11 @@ export default function Ads() {
       newSelected.add(id);
     }
     setSelectedIds(newSelected);
-    console.log(selectedIds);
   };
   const selectAll = () => {
     setSelectedIds(allAreChosen ? new Set() : new Set(ads.map(ad => ad.id)));
     setAllAreChosen(!allAreChosen);
   };
-
-  const clearSelection = () => {
-    setSelectedIds(new Set());
-    setAllAreChosen(false);
-  };
-  const bulkApprove = async () => {
-    if (selectedIds.size === 0) return;
-    if (!moderator?.permissions?.includes("approve_ads")) {
-      alert("У вас недостаточно прав");
-      return;
-    }
-
-    try {
-      selectedIds.forEach( async (id) => {
-        await fetchData(`${API_URL}/api/v1/ads/${id}/approve`, { method: 'POST' });
-      });
-      clearSelection();
-    } catch (err) {
-      if (err instanceof TypeError) {
-        console.error("Сетевая ошибка:", err.message);
-      } else {
-        console.error("Ошибка при одобрении объявления.", err.message);
-      }
-    }
-  };
-
 
   // формирование строки запроса с фильтрами и сортировкой
   // получение ответа: сложный объект со списком объявлений и информацией о пагинации
@@ -101,18 +84,18 @@ export default function Ads() {
     if (search && search.length < 3) { return; }
     const params = new URLSearchParams();
 
-    params.set('page', String(curPage));
-    params.set('limit', String(limit));
+    params.set('page', String(pagination.currentPage));
+    params.set('limit', String(pagination.itemsPerPage));
 
-    selectedStatuses.forEach((status) => {
+
+    filters.statuses.forEach((status) => {
       params.append('status', status);
     });
 
     // строгая проверка на пустую строку, так как ID может быть 0
-    selectedCategory !== '' ? params.append('categoryId', selectedCategory) : '';
-
-    minSelectedPrice !== '' ? params.append('minPrice', minSelectedPrice) : '';
-    maxSelectedPrice !== '' ? params.append('maxPrice', maxSelectedPrice) : '';
+    filters.categoryId !== '' ? params.append('categoryId', filters.categoryId) : '';
+    filters.minPrice !== '' ? params.append('minPrice', filters.minPrice) : '';
+    filters.maxPrice !== '' ? params.append('maxPrice', filters.maxPrice) : '';
 
     if (search && search.length >= 3) {
       params.set('search', search);
@@ -126,7 +109,7 @@ export default function Ads() {
 
     const fetchAds = async () => {
       try {
-        const data = await fetchData(`${API_URL}/api/v1/ads?${params.toString()}`);
+        const data = await fetchData<AdsResponseModel>(`${API_URL}/api/v1/ads?${params.toString()}`);
         setAds(data.ads);
         setPagination(data.pagination);
         localStorage.setItem('ids', JSON.stringify(data.ads.map(ad => ad.id)));
@@ -134,7 +117,8 @@ export default function Ads() {
         if (err instanceof TypeError) {
           console.error("Сетевая ошибка. TypeError:", err.message);
         } else {
-          console.error("HTTP ошибка.", err.message);
+          const error = err as Error;
+          console.error("HTTP ошибка.", error.message);
         }
       } finally {
         setLoading(false);
@@ -142,30 +126,31 @@ export default function Ads() {
     }
     fetchAds();
 
-  }, [selectedStatuses, selectedCategory, 
-    minSelectedPrice, maxSelectedPrice, 
-    search, sortBy, sortOrder, curPage, limit]);
+  }, [filters, search, sortBy, sortOrder, pagination.currentPage, pagination.itemsPerPage]);
 
-  if (loading) return <div>Загрузка...</div>;
-
-  const currentPage = pagination.currentPage;
-  const totalPages = pagination.totalPages;
-  const totalItems = pagination.totalItems;
+  if (loading) return <div>Загрузка объявлений</div>;
 
   // функция для перехода к новой странице
   // проверка на валидность номера страницы
-  const goTo = (p) => {
-    if (p < 1 || p > totalPages) return;
-    setCurPage(p);
+  const goTo = (p: number) => {
+    if (p < 1 || p > pagination.totalPages) return;
+    setPagination(prev => ({
+      ...prev,
+      currentPage: p,
+    }));
   };
 
   // обработка настройки количества объявлений на странице
   // проверка чисел
   // значение берется из инпута (при изменении)
-  const changeLimit = (e) => {
+  const changeLimit = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     if (raw === '') {
-      setLimit(10);
+      setPagination(prev => ({
+        ...prev,
+        itemsPerPage: 10,
+        currentPage: 1,
+      }));
       return;
     }
     let value = +raw;
@@ -173,36 +158,38 @@ export default function Ads() {
     if (value < 1) value = 1;
     if (value > 100) value = 100;
 
-    setLimit(value);
-    setCurPage(1);
+    setPagination(prev => ({
+      ...prev,
+      itemsPerPage: value,
+      currentPage: 1,
+    }));
   };
 
   const sidebarParams = {
-    selectedStatuses: selectedStatuses,
-    setSelectedStatuses: setSelectedStatuses,
-    selectedCategory: selectedCategory,
-    setSelectedCategory: setSelectedCategory,
-    minSelectedPrice: minSelectedPrice,
-    setMinSelectedPrice: setMinSelectedPrice,
-    maxSelectedPrice: maxSelectedPrice,
-    setMaxSelectedPrice: setMaxSelectedPrice,
-    isSidebarOpen: isSidebarOpen
+    filters,
+    onChangeFilters: (patch: Partial<FiltersModel>) => {
+      setFilters(prev => ({ ...prev, ...patch }));
+      setPagination(prev => ({ ...prev, currentPage: 1 }));
+    },
+    isSidebarOpen,
   };
+
   const adsHeaderParams = {
     sortBy: sortBy, 
     setSortBy: setSortBy,
     sortOrder: sortOrder, 
     setSortOrder: setSortOrder,
-    limit: limit, 
+    limit: pagination.itemsPerPage, 
     changeLimit: changeLimit,
     selectedIds: selectedIds,
     allAreChosen: allAreChosen,
     selectAll: selectAll,
-    moderator: moderator
-  };
+  } as AdsHeaderProps;
   const paginationParams = {
-    totalItems, curPage, 
-    totalPages, goTo
+    totalItems: pagination.totalItems, 
+    currentPage: pagination.currentPage, 
+    totalPages: pagination.totalPages, 
+    goTo,
   };
 
   // Порядок:
@@ -217,7 +204,6 @@ export default function Ads() {
         ☰
       </button>
       <Sidebar {...sidebarParams}/>
-
       <div>
         <AdsHeader {...adsHeaderParams}/>
         <div className="ad-list">
@@ -225,8 +211,20 @@ export default function Ads() {
             <AdPreview key={ad.id} ad={ad} isSelected={selectedIds.has(ad.id)} onToggle={() => {toggleSelection(ad.id)}} />
           ))}
           <Pagination {...paginationParams}/>
-
         </div>
+      </div>
+      <div>
+        <button className="createAd-button" onClick={() => setShowNewAd(true)}>
+          Добавить объявление
+        </button>
+
+        {showNewAd && (
+          <NewAd
+            onCreated={(ad: AdModel) => setAds((prev) => [ad, ...prev])}
+            onClose={() => setShowNewAd(false)}
+          />
+        )}
+
       </div>
     </div>
     </>

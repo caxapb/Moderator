@@ -1,8 +1,10 @@
 import './styles/Pagination.css'
 
-export default function Pagination({
-  totalItems, currentPage,
-  totalPages, goTo
+export default function Pagination({ totalItems, currentPage, totalPages, goTo }: {
+  totalItems: number;
+  currentPage: number;
+  totalPages: number;
+  goTo: (p: number) => void;
 }) {
   return (
   <div className='pagination'>

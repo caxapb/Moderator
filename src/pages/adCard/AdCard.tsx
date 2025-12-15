@@ -17,24 +17,27 @@ import { useParams, NavLink } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import './AdCard.css'
 
+import type { AdModel } from "../../models/AdsModels";
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function AdCard() {
   const { id } = useParams();
-  const [ad, setAd] = useState(null);
-  const [currentImg, setCurrentImg] = useState(0);
+  const [ad, setAd] = useState<AdModel | null>(null);
+  const [currentImg, setCurrentImg] = useState<number>(0);
 
 
   useEffect(() => {
     const fetchAdCard = async () => {
       try {
-        const data = await fetchData(`${API_URL}/api/v1/ads/${id}`);
+        const data = await fetchData<AdModel>(`${API_URL}/api/v1/ads/${id}`);
         setAd(data);
       } catch (err) {
         if (err instanceof TypeError) {
           console.error("Сетевая ошибка. TypeError:", err.message)
         } else {
-          console.error("HTTP ошибка.", err.message)
+          const error = err as Error;
+          console.error("HTTP ошибка.", error.message)
         }
       } 
     }
@@ -56,10 +59,10 @@ export default function AdCard() {
 
   let prevId = null;
   let nextId = null;
-  const rawIds = localStorage.getItem('ids');
+  const rawIds: string = localStorage.getItem('ids') || '';
   try {
-    const ids = JSON.parse(rawIds) || []; 
-    const index = ids.findIndex(x => String(x) === String(id));
+    const ids: number[] = JSON.parse(rawIds) || []; 
+    const index = ids.findIndex((x: number) => String(x) === String(id));
 
     if (index !== -1) {
       prevId = index > 0 ? ids[index - 1] : null;
@@ -98,7 +101,7 @@ export default function AdCard() {
 
       <div className="ad-moderation-container">
         <ModerationHistory history={ad.moderationHistory}/>
-        <ModeratorPannel id={id}/>
+        <ModeratorPannel id={Number(id)}/>
       </div>      
     </div>
     <div className="navigate-buttons">

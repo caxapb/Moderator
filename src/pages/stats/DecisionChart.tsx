@@ -1,47 +1,48 @@
 // ========================================================================================
-// Компонент с графиком распределения категорий, бар чарт
+// Компонент с графиком распределения решений, pie чарт
 // ========================================================================================
 
 import { useEffect, useRef } from "react";
 import Chart from "chart.js/auto";
 
-export default function ChartCategories({ data }) {
+import type { Chart as ChartJS } from "chart.js/auto";
+import type { DecisionsDataModel } from "../../models/StatsModel";
+
+export default function DecisionsChart({ data } : {data: DecisionsDataModel}) {
   // данные уже были загружены в родительском компоненте, поэтому передаем их
-  const canvasRef = useRef(null);
-  const chartRef = useRef(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const chartRef = useRef<ChartJS | null>(null);
 
   // отрисовка графика в canvas
   // за основу были взяты графики с https://www.w3schools.com/ai/ai_chartjs.asp, однако помогали нейросети
   useEffect(() => {
+    if (!canvasRef.current) return;
     const ctx = canvasRef.current.getContext("2d");
-    const labels = Object.keys(data); 
-    const values = Object.values(data);
+    if (!ctx) return;
 
     chartRef.current = new Chart(ctx, {
-      type: "bar",
+      type: "pie",
       data: {
-        labels,
+        labels: ["Одобрено", "Отклонено", "На доработку"],
         datasets: [
           {
-            label: "Количество объявлений",
-            data: values
-          }
-        ]
+            backgroundColor: ["green", "red", "orange"],
+            data: [
+              data.approved ?? 0,
+              data.rejected ?? 0,
+              data.requestChanges ?? 0,
+            ],
+          },
+        ],
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: false
+            position: "right",
           },
         },
-        scales: {
-          y: {
-            beginAtZero: true
-          }
-        }
-      }
+      },
     });
 
     return () => {
@@ -50,7 +51,7 @@ export default function ChartCategories({ data }) {
   }, [data]);
 
   return (
-    <div>
+    <div >
       <canvas ref={canvasRef}></canvas>
     </div>
   );

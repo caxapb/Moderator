@@ -1,23 +1,35 @@
+import type { ModeratorModel } from "../models/ModeratorModel";
+
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
-export default async function fetchData(url, params = null) {
+export default async function fetchData<T = unknown>(url: string, params?: RequestInit): Promise<T> {
   const response = await fetch(url, params);
-  let message;
+  let message: string;
 
   if (!response.ok) {
     try {
-      const error = await response.json();
+      const error = (await response.json()) as {
+        error: string;
+        message?: string;
+        id?: number;
+      };
       message = `Ошибка ${response.status}: ${error.error} \n ${error.message || 'Запрос для id ' + error.id || ''}`;
     } catch {
       message = `Ошибка обработки ответа от сервера. ${response.status}: ${response.statusText}`;
     }
     throw new Error(`${message}`);
   }
-  return await response.json();
+  return (await response.json()) as T;
 }
 
-async function fetchApprove({ moderator, id }) {
-  if (!moderator?.permissions?.includes("approve_ads")) {
+
+async function fetchApprove(params : {
+  moderator: ModeratorModel;
+  id: number;
+}):  Promise<boolean | void> {
+  const {moderator, id} = params;
+
+  if (!moderator.permissions.includes("approve_ads")) {
     alert("У вас недостаточно прав");
     return;
   }
@@ -30,16 +42,23 @@ async function fetchApprove({ moderator, id }) {
       console.error("Сетевая ошибка:", err.message);
       return false;
     } else {
-      console.error("Ошибка при одобрении объявления.", err.message);
+      const error = err as Error;
+      console.error("Ошибка при одобрении объявления.", error.message);
       return false;
     }
   }
 }
 
-async function fetchReject({ moderator, id, body }) {
-  if (!moderator?.permissions?.includes("request_changes")) {
+async function fetchReject(params: { 
+  moderator: ModeratorModel; 
+  id: number; 
+  body: { reason: string; comment: string};
+}):  Promise<boolean> {
+  const {moderator, id, body} = params;
+
+  if (!moderator.permissions.includes("request_changes")) {
     alert("У вас недостаточно прав");
-    return;
+    return false;
   }
 
   try {
@@ -55,16 +74,23 @@ async function fetchReject({ moderator, id, body }) {
       console.error("Сетевая ошибка:", err.message);
       return false;
     } else {
-      console.error("Ошибка при отправке объявления на доработку.", err.message);
+      const error = err as Error;
+      console.error("Ошибка при отправке объявления на доработку.", error.message);
       return false;
     }
   }
 }
 
-async function fetchRequestChanges({ moderator, id, body }) {
-  if (!moderator?.permissions?.includes("request_changes")) {
+async function fetchRequestChanges(params: { 
+  moderator: ModeratorModel; 
+  id: number; 
+  body: { reason: string; comment: string};
+}): Promise<boolean> {
+  const {moderator, id, body} = params;
+
+  if (!moderator.permissions.includes("request_changes")) {
     alert("У вас недостаточно прав");
-    return;
+    return false;
   }
 
   try {
@@ -80,7 +106,8 @@ async function fetchRequestChanges({ moderator, id, body }) {
       console.error("Сетевая ошибка:", err.message);
       return false;
     } else {
-      console.error("Ошибка при отправке объявления на доработку.", err.message);
+      const error = err as Error;
+      console.error("Ошибка при отправке объявления на доработку.", error.message);
       return false;
     }
   }

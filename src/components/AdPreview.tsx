@@ -6,9 +6,15 @@
 import catImage from '../assets/cat.jpg';
 import { Link } from 'react-router-dom';
 import './AdPreview.css'
+import { STATUS, PRIORITY } from '../models/AdsModels';
 
+import type { AdModel } from '../models/AdsModels';
 
-export default function AdPreview({ ad, isSelected, onToggle }) {
+export default function AdPreview({ ad, isSelected, onToggle }: {
+  ad: AdModel;
+  isSelected: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div className={`ad-preview-container ${isSelected ? 'selected' : ''}`}>
       <label>
@@ -23,8 +29,9 @@ export default function AdPreview({ ad, isSelected, onToggle }) {
           <p>{ad.price} ₽</p>
           <p>Категория: {ad.category}</p>
           <p>Дата: {ad.createdAt.slice(0, 10)}</p>
-          <p>Статус: {ad.status === "rejected" ? "Отклонено ❌" : ad.status === "approved" ? "Одобрено ✅" : "На доработку🟡"}</p>
-          <p>Приоритет: {ad.priority === "urgent" ? "Срочный ❗️" : "Нормальный"}</p>
+          <p>Статус: {ad.status === STATUS.rejected ? "Отклонено ❌" : 
+              ad.status === STATUS.approved ? "Одобрено ✅" : "На доработку🟡"}</p>
+          <p>Приоритет: {ad.priority === PRIORITY.urgent ? "Срочный ❗️" : "Нормальный"}</p>
         </div>
       </div>
       </Link>

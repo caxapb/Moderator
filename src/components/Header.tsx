@@ -10,20 +10,22 @@ import { useEffect, useRef } from 'react';
 import UserImg from '../assets/user2.png'
 import './Header.css'
 
-export default function Header() {  
-  const [ moderator, loading ] = useModerator();
-  const [searchParams, setSearchParams] = useSearchParams();
-  const search = searchParams.get('search') || '';
+import type { ModeratorModel } from '../models/ModeratorModel';
 
-  const inputRef = useRef(null);
+export default function Header() {  
+  const [ moderator, loading ] = useModerator() as [ModeratorModel, boolean];
+  const [searchParams, setSearchParams] = useSearchParams();
+  const search = searchParams.get('search') ?? '';
+
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Хендлер keydown, слушает какие клавиши были нажаты, проверяет нужно ли переводить фокус на элемент поиска
-  function keydownSearchHandler(e) {
-    if (e.target.tagName === 'INPUT') return; 
+  function keydownSearchHandler(e: KeyboardEvent) {
+    if (e.target instanceof HTMLInputElement) return;
     if (e.key === '/') {
       // чтобы ИМЕННО ЭТОТ символ не напечатался в окно ввода, а при нажатии фокус переводился на окно поиска
       e.preventDefault(); 
-      inputRef.current ? inputRef.current.focus() : '';
+      inputRef.current?.focus();
     }
     return;
   }
@@ -34,7 +36,7 @@ export default function Header() {
   }, []);
 
   // Хендлер поиска, следит за содержимым в input, обновляет параметры url и состояние
-  const handleSearch = (e) => {
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     if (!value) {
       searchParams.delete('search');

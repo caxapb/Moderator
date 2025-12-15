@@ -2,15 +2,16 @@
 // Компонент, содержащий подробную информацию о товаре
 // Формирует таблицу о товаре и продавце из переданного в компонент объекта объявления
 // ========================================================================================
+import type { AdModel } from "../../models/AdsModels";
+import { STATUS, PRIORITY } from "../../models/AdsModels";
 
-
-export default function AdDetails({ad}) {
+export default function AdDetails({ad}: {ad: AdModel}) {
 
   const description = ad.description.slice(ad.description.indexOf('.')+1, );
   const createDate = ad.createdAt.slice(0, 10) + " " + ad.createdAt.slice(11, 19);
   const updateDate = ad.updatedAt.slice(0, 10) + " " + ad.updatedAt.slice(11, 19);
-  const status = ad.status === "approved" ? "Одобрено" : ad.status === "rejected" ? "Отклонено" : "Отправлено на доработку";
-  const priority = ad.price === "urgent" ? "Срочное" : "Не срочное";
+  const status = ad.status === STATUS.approved ? "Одобрено" : ad.status === STATUS.rejected ? "Отклонено" : "Отправлено на доработку";
+  const priority = ad.priority === PRIORITY.urgent ? "Срочное" : "Не срочное";
   const sellerDate = ad.seller.registeredAt.slice(0, 10) + " " + ad.seller.registeredAt.slice(11, 19);
 
   return (

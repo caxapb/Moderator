@@ -10,6 +10,10 @@
 .sidebar input {
   background-color: white;
   border-width: 1px;
+  cursor: pointer;
+}
+.sidebar label {
+  cursor: pointer;
 }
 .sidebar .text-input {
   width: 130px;
@@ -19,11 +23,15 @@
   border-radius: 8px;
   background-color: white;
   padding: 5px;
+  color: black;
 }
 
 .sidebar button {
   margin-top: 15px;
   background-color: #00aaff;
+}
+.sidebar button:hover {
+  background-color: #65c6f6;
 }
 
 .sidebar h3 {

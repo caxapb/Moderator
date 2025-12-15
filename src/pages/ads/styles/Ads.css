@@ -33,6 +33,12 @@
   cursor: pointer;
   background-color: #45bbf7;
 }
+.createAd-button {
+  background-color: #00aaff;
+}
+.createAd-button:hover {
+  background-color: #50bdf4;
+}
 
 
 @media screen and (max-width: 877px) {

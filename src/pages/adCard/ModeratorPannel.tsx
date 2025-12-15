@@ -15,22 +15,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useModerator } from '../../hooks/useModerator';
 import { fetchApprove, fetchReject, fetchRequestChanges } from '../../utils/fetchData';
+import ModerationForm from '../../components/ModeratorForm';
 
-const reasonsReject = [
-  "Запрещенный товар",
-  "Неверная категория",
-  "Некорректное описание",
-  "Проблемы с фото",
-  "Подозрение на мошенничество",
-  "Другое",
-];
+import type { ModeratorModel } from '../../models/ModeratorModel';
 
-export default function ModeratorPannel({ id }) {
-  const [moderator, loading] = useModerator();
-  const [showRejectForm, setShowRejectForm] = useState(false);
-  const [showRequestChangesForm, setShowRequestChangesForm] = useState(false);
-  const [reason, setReason] = useState(reasonsReject[0]);
-  const [comment, setComment] = useState('');
+export default function ModeratorPannel({ id }: {id: number}) {
+  const [moderator, loading] = useModerator() as [ModeratorModel, boolean];
+  const [showRejectForm, setShowRejectForm] = useState<boolean>(false);
+  const [showRequestChangesForm, setShowRequestChangesForm] = useState<boolean>(false);
 
   const handleApprove = useCallback(async () => {
     const result = await fetchApprove({ moderator, id });
@@ -42,9 +34,9 @@ export default function ModeratorPannel({ id }) {
   }, [moderator, id]);
 
   useEffect(() => {
-    const handleKey = (e) => {
+    const handleKey = (e: KeyboardEvent) => {
       // проверка, откуда нажата клавиша: если из окна ввода, то игнорировать и просто печатать ее, не обрабатывать
-      const tag = e.target.tagName;
+      const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
 
       // обработка специальных клавиш (теперь они нажаты вне окон ввода)
@@ -68,8 +60,10 @@ export default function ModeratorPannel({ id }) {
     return <div>Доступ запрещен</div>;
   }
 
-  const handleReject = async(e) => {
-    e.preventDefault();
+  const handleReject = async({ reason, comment }: {
+    reason: string;
+    comment: string;
+  }) => {
     const body = { 'reason': reason, 'comment': comment.trim() };
     const result = await fetchReject({ moderator, id, body });
     if (result) {
@@ -79,8 +73,10 @@ export default function ModeratorPannel({ id }) {
     }
   };
 
-  const handleRequestChanges = async(e) => {
-    e.preventDefault();
+  const handleRequestChanges = async({ reason, comment }: {
+    reason: string;
+    comment: string;
+  }) => {
     const body = { 'reason': reason, 'comment': comment.trim() };
     const result = await fetchRequestChanges({ moderator, id, body });
     if (result) {
@@ -110,59 +106,28 @@ export default function ModeratorPannel({ id }) {
         При повторном нажатии на кнопку Отклонить, которая находится в окне-форме, отправить ПОСТ запрос на сервер 
         и сменить состояние showRejectForm - отклик уже отправлен, можно закрывать окно-форму*/}
     {showRejectForm && (
-        <form className="reject-form" onSubmit={handleReject}>
-          <label>Выберите причину отклонения (обязательно):</label>
-          <select required value={reason} onChange={(e) => setReason(e.target.value)} >
-            {reasonsReject.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-
-          <label>
-            Комментарий (необязательно)
-          </label>
-          <textarea value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Дайте автору комментарий"
-          />
-
-          <div className="send-container">
-            <button onClick={() => { setShowRejectForm(false); }}>
-              Отмена
-            </button>
-            <button type="submit" className='pannel-reject'>
-              Отклонить
-            </button>
-          </div>
-        </form>
+          <ModerationForm
+          className="reject-form"
+          title="Вы уверены, что хотите отклонить это объявление?"
+          commentLabel="Комментарий (необязательно)"
+          commentRequired={false}
+          confirmLabel="Отклонить"
+          onCancel={() => setShowRejectForm(false)}
+          onSubmit={handleReject}
+        />
       )}
       
       {/* Аналогично обработке отклонения */}
       {showRequestChangesForm && (
-        <form className="request-changes-form" onSubmit={handleRequestChanges}>
-          <label>Выберите причину отклонения (обязательно):</label>
-          <select required value={reason} onChange={(e) => setReason(e.target.value)} >
-            {reasonsReject.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-
-          <label> Дайте комментарий (обязательно) </label>
-          <textarea value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Дайте автору комментарий"
-            required
-          />
-
-          <div className="send-container">
-            <button onClick={() => { setShowRequestChangesForm(false); }}>
-              Отмена
-            </button>
-            <button type="submit" className='pannel-rewrite'>
-              На доработку
-            </button>
-          </div>
-        </form>
+          <ModerationForm
+          className="request-changes-form"
+          title="Вы уверены, что хотите отправить объявление на доработку?"
+          commentLabel="Комментарий (обязательно)"
+          commentRequired={true}
+          confirmLabel="На доработку"
+          onCancel={() => setShowRequestChangesForm(false)}
+          onSubmit={handleRequestChanges}
+        />
       )}
     </div>
     </>

@@ -1,64 +1,75 @@
 import './styles/AdsHeader.css'
 import { useState } from 'react';
 import { fetchApprove, fetchReject, fetchRequestChanges } from '../../utils/fetchData';
+import { useModerator } from '../../hooks/useModerator';
+import ModerationForm from '../../components/ModeratorForm';
+import type { ModeratorModel } from '../../models/ModeratorModel';
 
-const reasonsReject = [
-  "Запрещенный товар",
-  "Неверная категория",
-  "Некорректное описание",
-  "Проблемы с фото",
-  "Подозрение на мошенничество",
-  "Другое",
-];
+export type AdsHeaderProps = {
+  sortBy: 'createdAt' | 'price' | 'priority' | ''; 
+  setSortBy: (a: string) => void;
+  sortOrder: 'asc' |'desc' | '';
+  setSortOrder: (a: string) => void;
+  limit: number;
+  changeLimit: () => void;
+  selectedIds: Set<number>;
+  allAreChosen: boolean;
+  selectAll: () => void;
+}
 
 export default function AdsHeader({
   sortBy, setSortBy,
   sortOrder, setSortOrder,
   limit, changeLimit,
   selectedIds, allAreChosen, 
-  selectAll, moderator
-}) {
+  selectAll
+}: AdsHeaderProps) {
   const [showApproveForm, setShowApproveForm] = useState(false);
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [showRequestChangesForm, setShowRequestChangesForm] = useState(false);
-  const [reason, setReason] = useState(reasonsReject[0]);
-  const [comment, setComment] = useState('');
-  
+  const [moderator, loadingModerator] = useModerator() as [ModeratorModel, boolean];
 
-  const handleApprove = () => {
-    selectedIds.forEach( async(id) => {
+  const handleApprove = async (e: React.FormEvent) => {
+    e.preventDefault();
+    for (let id of selectedIds) {
       const result = await fetchApprove({ moderator, id });
       if (!result) {
         alert("Ошибка во время одобрения объявления.");
-      } else {
-        window.location.reload();
-      };
-    });
+      }
+    }
+    window.location.reload();
   }
 
-  const handleReject = () => {
-    selectedIds.forEach( async(id) => {
+  const handleReject = async ({ reason, comment }: {
+    reason: string;
+    comment: string;
+  }) => {
+    for (let id of selectedIds) {
       const body = { 'reason': reason, 'comment': comment.trim() };
       const result = await fetchReject({ moderator, id, body });
-      if (result) {
-        window.location.reload();
-      } else {
-        alert('Ошибка во время отклонения объявления.');
+      if (!result) {
+        alert('error');
       }
-    });
+    }
+    window.location.reload();
   }
 
-  const handleRequestChanges = () => {
-    selectedIds.forEach( async(id) => {
+  const handleRequestChanges = async ({ reason, comment }: {
+    reason: string;
+    comment: string;
+  }) => {
+    for (let id of selectedIds) {
       const body = { 'reason': reason, 'comment': comment.trim() };
       const result = await fetchRequestChanges({ moderator, id, body });
-      if (result) {
-        window.location.reload();
-      } else {
+      if (!result) {
         alert('Ошибка во время отклонения объявления.');
       }
-    });
+    }
+    window.location.reload();
   }
+
+  if (loadingModerator) return <div>Загрузка данных о пользователе</div>;
+
 
   return (
   <div className='list-header'>
@@ -116,10 +127,6 @@ export default function AdsHeader({
         }}>Отправить выбранные на доработку</button>
       </div>
 
-    {/* {selectedIds.length && (
-      <></>
-    )} */}
-
     {showApproveForm && (
       <div className='forms'>
         <form className='approve-form' onSubmit={handleApprove}>
@@ -132,62 +139,32 @@ export default function AdsHeader({
       </div>
     )}
     {showRejectForm && (
-      <div className='forms'>
-        <form className='reject-form' onSubmit={handleReject}
-              style={{'width': '80%'}}>
-          <label> Вы уверены что хотите отклонить все выбранные объявления? </label> <br />
-          
-          <label>Выберите причину отклонения (обязательно):</label>
-          <select required value={reason} onChange={(e) => setReason(e.target.value)} >
-            {reasonsReject.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-
-          <label>
-            Комментарий (необязательно)
-          </label>
-          <textarea value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Дайте автору комментарий"
+        <div className="forms">
+          <ModerationForm
+            className="reject-form"
+            title="Вы уверены, что хотите отклонить все выбранные объявления?"
+            commentLabel="Комментарий (необязательно)"
+            commentRequired={false}
+            confirmLabel="Отклонить"
+            onCancel={() => setShowRejectForm(false)}
+            onSubmit={handleReject}
           />
-
-          <div className='send-container'>
-            <button onClick={() => {setShowRejectForm(false)}}>Отмена</button>
-            <button type='submit' className='pannel-reject'>Отклонить</button>
-          </div>
-        </form>
-      </div>
+        </div>
     )}
+
     {showRequestChangesForm && (
-      <div className='forms'>
-        <form className='request-changes-form' onSubmit={handleRequestChanges}
-              style={{'width': '80%'}}>
-          <label> Вы уверены что хотите отправить на доработку все выбранные объявления?</label> <br />
-
-          <label>Выберите причину отклонения (обязательно):</label>
-          <select required value={reason} onChange={(e) => setReason(e.target.value)} >
-            {reasonsReject.map((r) => (
-              <option key={r} value={r}>{r}</option>
-            ))}
-          </select>
-
-          <label>
-            Комментарий (обязательно)
-          </label>
-          <textarea value={comment}
-            onChange={(e) => setComment(e.target.value)}
-            placeholder="Дайте автору комментарий"
-          />
-
-          <div className='send-container'>
-            <button onClick={() => {setShowRequestChangesForm(false)}}>Отмена</button>
-            <button type='submit' className='pannel-rewrite'>На доработку</button>
-          </div>
-        </form>
+      <div className="forms">
+        <ModerationForm
+          className="request-changes-form"
+          title="Вы уверены, что хотите отправить на доработку все выбранные объявления?"
+          commentLabel="Комментарий (обязательно)"
+          commentRequired={true}
+          confirmLabel="На доработку"
+          onCancel={() => setShowRequestChangesForm(false)}
+          onSubmit={handleRequestChanges}
+        />
       </div>
     )}
-    
   </div>  
   </div>
   );

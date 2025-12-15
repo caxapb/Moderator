@@ -7,42 +7,39 @@
 // ========================================================================================
 
 import './styles/Sidebar.css'
+import type { FiltersModel } from '../../models/FiltersModel';
+import { defaultFilters } from '../../models/FiltersModel';
+import { CATEGORIES } from '../../models/AdsModels';
 
-// Из схемы Advertisement (tech-int3-server/schema.yaml)
-const statuses = ['pending', 'approved', 'rejected', 'draft'];
+const statuses = ['pending', 'approved', 'rejected'];
+const categories = Object.values(CATEGORIES);
 
-// Из файла tech-int3-server/src/models/v1/data.js
-// Иного доступа к ID категорий не было мной найдено
-// Индексы в массиве соответствуют ID
-const categories = ['Электроника', 'Недвижимость', 'Транспорт', 'Работа', 'Услуги', 'Животные', 'Мода', 'Детское']
-
-
-export default function Sidebar({ 
-  selectedStatuses, setSelectedStatuses,
-  selectedCategory, setSelectedCategory,
-  minSelectedPrice, setMinSelectedPrice,
-  maxSelectedPrice, setMaxSelectedPrice,
-  isSidebarOpen
+export default function Sidebar({ filters, onChangeFilters, isSidebarOpen, }: {
+  filters: FiltersModel;
+  onChangeFilters: (patch: Partial<FiltersModel>) => void;
+  isSidebarOpen: boolean;
 }) {
+  const { statuses: selectedStatuses, categoryId, minPrice, maxPrice } = filters;
 
   // обработчики статуса и категории
-  const toggleStatus = (status) => {
-    selectedStatuses.includes(status) ?
-        setSelectedStatuses(selectedStatuses.filter(stat => stat !== status)) :
-        setSelectedStatuses([...selectedStatuses, status]);
+  const toggleStatus = (status: string) => {
+    const newStatusesSet = selectedStatuses.includes(status)
+      ? selectedStatuses.filter((s) => s !== status)
+      : [...selectedStatuses, status];
+    onChangeFilters({ statuses: newStatusesSet });
   };
-  const toggleCategory = (cat) => {
-    selectedCategory === '' 
-    ? setSelectedCategory(categories.indexOf(cat)) 
-      : selectedCategory === cat ? setSelectedCategory('') : setSelectedCategory (categories.indexOf(cat));
-  }
+
+  const toggleCategory = (cat: CATEGORIES) => {
+    const id = String(categories.indexOf(cat));
+    // если повторно нажали на ту же снимаем выбор
+    onChangeFilters({
+      categoryId: categoryId === id ? '' : id
+    });
+  };
 
   // сброс всех фильтров
   const drop = () => {
-    setSelectedStatuses([]);
-    setSelectedCategory('');
-    setMinSelectedPrice('');
-    setMaxSelectedPrice('');
+    onChangeFilters(defaultFilters);
   };
 
   return (
@@ -62,11 +59,11 @@ export default function Sidebar({
       ))}
 
       <h3>Категория</h3>
-        {categories.map((cat) => (
+        {categories.map((cat, idx) => (
           <label key={cat} >
             <input
               type="checkbox"
-              checked={categories[selectedCategory] === cat}
+              checked={categoryId !== '' && Number(categoryId) === idx}
               onChange={() => toggleCategory(cat)}
             />
             {cat} <br />
@@ -77,14 +74,14 @@ export default function Sidebar({
         <input className='text-input'
           type="number"
           placeholder="от"
-          value={minSelectedPrice}
-          onChange={e => setMinSelectedPrice(e.target.value)}
+          value={minPrice}
+          onChange={e => onChangeFilters({ minPrice: e.target.value })}
         />
         <input className='text-input'
             type="number"
             placeholder="до"
-            value={maxSelectedPrice}
-            onChange={e => setMaxSelectedPrice(e.target.value)}
+            value={maxPrice}
+            onChange={e => onChangeFilters({ maxPrice: e.target.value })}
         />
 
       <button type="button" onClick={drop}> Сбросить </button>
