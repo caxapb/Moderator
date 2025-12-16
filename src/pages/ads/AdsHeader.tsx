@@ -5,16 +5,19 @@ import { useModerator } from '../../hooks/useModerator';
 import ModerationForm from '../../components/ModeratorForm';
 import type { ModeratorModel } from '../../models/ModeratorModel';
 
+type SortByType = 'createdAt' | 'price' | 'priority' | '';
+type SortOrderType = 'asc' |'desc' | '';
+
 export type AdsHeaderProps = {
-  sortBy: 'createdAt' | 'price' | 'priority' | ''; 
-  setSortBy: (a: string) => void;
-  sortOrder: 'asc' |'desc' | '';
-  setSortOrder: (a: string) => void;
+  sortBy: SortByType; 
+  setSortBy: (a: SortByType) => void;
+  sortOrder: SortOrderType;
+  setSortOrder: (a: SortOrderType) => void;
   limit: number;
-  changeLimit: () => void;
+  changeLimit: (e: React.ChangeEvent<HTMLInputElement>) => void;
   selectedIds: Set<number>;
   allAreChosen: boolean;
-  selectAll: () => void;
+  selectAll: () => void;  
 }
 
 export default function AdsHeader({
@@ -77,7 +80,7 @@ export default function AdsHeader({
     <div className='sorting-block'> 
       <div> <label>Сортировка:&nbsp;</label> </div>
       <div> 
-        <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+        <select value={sortBy} onChange={(e) => setSortBy(e.target.value as SortByType)}>
         <option value="">Нет</option>
         <option value="createdAt">По дате</option>
         <option value="price">По цене</option>
@@ -86,7 +89,7 @@ export default function AdsHeader({
       </div>
 
       <div>
-        <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+        <select value={sortOrder} onChange={(e) => setSortOrder(e.target.value as SortOrderType)}>
         <option value="">Порядок</option>
         <option value="asc">Возрастание</option>
         <option value="desc">Убывание</option>

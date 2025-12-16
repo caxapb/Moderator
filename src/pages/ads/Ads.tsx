@@ -7,42 +7,34 @@
 
 
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import AdPreview from '../../components/AdPreview';
 import fetchData from '../../utils/fetchData';
-import { useSearchParams } from 'react-router-dom';
 import AdsHeader from './AdsHeader';
 import Pagination from './Pagination';
 import NewAd from './NewAd';
-import { defaultPagination } from '../../models/PaginationModel';
-import { defaultFilters } from '../../models/FiltersModel';
 
 // импорт типов
 import type { AdModel } from '../../models/AdsModels';
-import type { PaginationModel } from '../../models/PaginationModel';
 import type { AdsResponseModel } from '../../models/ResponseModel';
 import type { FiltersModel } from '../../models/FiltersModel';
 import type { AdsHeaderProps } from './AdsHeader';
 
+// импорт из redux store
+import { useAppDispatch,  useAppSelector} from '../../store/hooks';
+import { setAds, setFilters, setSortBy, setSortOrder, setPagination,
+  setItemsPerPage, setCurrentPage, toggleSelected, selectAll,
+} from '../../store/adsSlice';
+
+// импорт стилей
 import './styles/Ads.css'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
+const API_URL: string = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 
 export default function Ads() {
-  // данные по объявлениям
-  const [ads, setAds] = useState<AdModel[]>([]);
-
-  // данные по пагинации
-  const [pagination, setPagination] = useState<PaginationModel>(defaultPagination);
-
-  // выбранные фильтры и параметр сортировки
-  const [filters, setFilters] = useState<FiltersModel>(defaultFilters);
-  const [sortOrder, setSortOrder] = useState<'asc' |'desc' | ''>('');
-  const [sortBy, setSortBy] = useState<'createdAt' | 'price' | 'priority' | ''>('');
-
-  // инфо о выбранныъ объявлениях
-  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
-  const [allAreChosen, setAllAreChosen] = useState<boolean>(false);
+  const { ads, filters, sortBy, sortOrder, pagination, selectedIds, allAreChosen,} = useAppSelector((state) => state.ads);
+  const dispatch = useAppDispatch();
 
   // поиск через параметры url
   const [searchParams] = useSearchParams();
@@ -50,28 +42,18 @@ export default function Ads() {
 
   // трекаем должен ли сайдбар быть открыт (для адаптивности)
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
-  const toggleSidebar = () => {
-    setIsSidebarOpen(!isSidebarOpen);
-  };
 
   // трекаем должно ли окно о создании нового объявления быть октрытым
-  const [showNewAd, setShowNewAd] = useState(false);
+  const [showNewAd, setShowNewAd] = useState<boolean>(false);
 
   // загрузка
   const [loading, setLoading] = useState<boolean>(true);
 
   const toggleSelection = (id: number) => {
-    const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
-    setSelectedIds(newSelected);
+    dispatch(toggleSelected(id));
   };
-  const selectAll = () => {
-    setSelectedIds(allAreChosen ? new Set() : new Set(ads.map(ad => ad.id)));
-    setAllAreChosen(!allAreChosen);
+  const handleSelectAll = () => {
+    dispatch(selectAll());
   };
 
   // формирование строки запроса с фильтрами и сортировкой
@@ -110,8 +92,8 @@ export default function Ads() {
     const fetchAds = async () => {
       try {
         const data = await fetchData<AdsResponseModel>(`${API_URL}/api/v1/ads?${params.toString()}`);
-        setAds(data.ads);
-        setPagination(data.pagination);
+        dispatch(setAds(data.ads));
+        dispatch(setPagination(data.pagination));
         localStorage.setItem('ids', JSON.stringify(data.ads.map(ad => ad.id)));
       } catch (err) {
         if (err instanceof TypeError) {
@@ -126,7 +108,7 @@ export default function Ads() {
     }
     fetchAds();
 
-  }, [filters, search, sortBy, sortOrder, pagination.currentPage, pagination.itemsPerPage]);
+  }, [filters, search, sortBy, sortOrder, pagination.currentPage, pagination.itemsPerPage, dispatch]);
 
   if (loading) return <div>Загрузка объявлений</div>;
 
@@ -134,10 +116,7 @@ export default function Ads() {
   // проверка на валидность номера страницы
   const goTo = (p: number) => {
     if (p < 1 || p > pagination.totalPages) return;
-    setPagination(prev => ({
-      ...prev,
-      currentPage: p,
-    }));
+    dispatch(setCurrentPage(p));
   };
 
   // обработка настройки количества объявлений на странице
@@ -146,11 +125,7 @@ export default function Ads() {
   const changeLimit = (e: React.ChangeEvent<HTMLInputElement>) => {
     const raw = e.target.value;
     if (raw === '') {
-      setPagination(prev => ({
-        ...prev,
-        itemsPerPage: 10,
-        currentPage: 1,
-      }));
+      dispatch(setItemsPerPage(10));
       return;
     }
     let value = +raw;
@@ -158,33 +133,29 @@ export default function Ads() {
     if (value < 1) value = 1;
     if (value > 100) value = 100;
 
-    setPagination(prev => ({
-      ...prev,
-      itemsPerPage: value,
-      currentPage: 1,
-    }));
+    dispatch(setItemsPerPage(value));
   };
 
   const sidebarParams = {
     filters,
     onChangeFilters: (patch: Partial<FiltersModel>) => {
-      setFilters(prev => ({ ...prev, ...patch }));
-      setPagination(prev => ({ ...prev, currentPage: 1 }));
+      dispatch(setFilters(patch));
     },
     isSidebarOpen,
   };
 
   const adsHeaderParams = {
     sortBy: sortBy, 
-    setSortBy: setSortBy,
+    setSortBy: (value: 'createdAt' | 'price' | 'priority' | '') => dispatch(setSortBy(value)),
     sortOrder: sortOrder, 
-    setSortOrder: setSortOrder,
+    setSortOrder: (value: 'asc' |'desc' | '') => dispatch(setSortOrder(value)),
     limit: pagination.itemsPerPage, 
     changeLimit: changeLimit,
     selectedIds: selectedIds,
     allAreChosen: allAreChosen,
-    selectAll: selectAll,
+    selectAll: handleSelectAll,
   } as AdsHeaderProps;
+  
   const paginationParams = {
     totalItems: pagination.totalItems, 
     currentPage: pagination.currentPage, 
@@ -197,10 +168,11 @@ export default function Ads() {
   // формирование полей для сортировки, обработчиков событий при их изменении и количества объявлений на страницу
   // лист объявлений
   // пагинация со страницами, общее количество объявлений
+  // кнопка для добавления нового объявления от имени модератора
   return (
     <>
     <div className='main-page'>
-      <button className="sidebar-toggle-btn" onClick={toggleSidebar}>
+      <button className="sidebar-toggle-btn" onClick={() => {setIsSidebarOpen(!isSidebarOpen)}}>
         ☰
       </button>
       <Sidebar {...sidebarParams}/>
@@ -220,11 +192,10 @@ export default function Ads() {
 
         {showNewAd && (
           <NewAd
-            onCreated={(ad: AdModel) => setAds((prev) => [ad, ...prev])}
+            onCreated={(ad: AdModel) => dispatch(setAds([ad, ...ads]))}
             onClose={() => setShowNewAd(false)}
           />
         )}
-
       </div>
     </div>
     </>
